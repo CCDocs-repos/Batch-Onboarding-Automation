@@ -1,0 +1,17 @@
+2025-07-01 23:10:31,151 - INFO - Detailed logging enabled - check log file for complete information
+2025-07-01 23:10:31,151 - INFO - BambooHR Subdomain: ccdocs
+2025-07-01 23:10:31,152 - INFO - BambooHR API Key: ********bf81
+2025-07-01 23:10:31,152 - INFO - WebWork URL: https://www.webwork-tracker.com/rest-api/users
+2025-07-01 23:10:31,153 - INFO - WebWork Username: Set
+2025-07-01 23:10:31,153 - INFO - Google Sheet ID: 1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA
+2025-07-01 23:10:31,154 - INFO - Google Sheet Name: Hires
+2025-07-01 23:10:31,156 - INFO - Initializing Google Sheets...
+2025-07-01 23:10:31,628 - INFO - Initializing Slack client...
+2025-07-01 23:10:31,628 - INFO - All non-bamboo clients initialized.
+2025-07-01 23:10:31,629 - INFO - --- RUNNING IN PRODUCTION MODE ---
+2025-07-01 23:10:31,630 - INFO - Reading pending rows from Google Sheet...
+2025-07-01 23:10:31,630 - INFO - Reading data from sheet: 1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA, tab: Hires
+2025-07-01 23:10:33,050 - ERROR - Error reading from Google Sheet: <HttpError 400 when requesting https://sheets.googleapis.com/v4/spreadsheets/1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA/values/Hires%21A1%3AP?alt=json returned "Unable to parse range: Hires!A1:P". Details: "Unable to parse range: Hires!A1:P">
+2025-07-01 23:10:33,051 - CRITICAL - Failed to read pending rows: <HttpError 400 when requesting https://sheets.googleapis.com/v4/spreadsheets/1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA/values/Hires%21A1%3AP?alt=json returned "Unable to parse range: Hires!A1:P". Details: "Unable to parse range: Hires!A1:P">
+2025-07-01 23:10:33,052 - INFO - Sending Slack notification to C08HXUZHPL1
+2025-07-01 23:10:33,592 - INFO - Slack notification sent successfully

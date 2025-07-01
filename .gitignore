@@ -6,3 +6,9 @@
 
 # Ignore node_modules folder (common example)
 node_modules/
+
+# Logs
+*.log
+
+# Ignore all PNG image files
+*.png
