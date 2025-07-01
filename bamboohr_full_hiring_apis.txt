@@ -1,0 +1,73 @@
+
+BambooHR Full Hiring Workflow API Details
+=========================================
+1. List Job Openings
+--------------------
+Endpoint:
+  GET /recruiting/v1/job-openings
+Description:
+  - Retrieves all job openings (draft & open) for your company.
+  - Use to populate your UI list of available positions.
+Automation:
+  Call this first to discover available jobId values for further operations.
+2. List Candidates for a Position
+---------------------------------
+Endpoint:
+  GET /recruiting/v1/job-openings/{jobId}/candidates
+Description:
+  - Returns all applicants for the specified jobId.
+  - Includes applicantId, status, and basic profile info.
+Automation:
+  Use the chosen jobId to fetch its applicant list before selecting a candidate.
+3. Get Candidate Details
+------------------------
+Endpoint:
+  GET /recruiting/v1/applicants/{applicantId}
+Description:
+  - Retrieves detailed info for a single applicant, including contact details, resume fields, notes, and emails.
+Automation:
+  Fetch this when you need to display or extract candidate data before initiating a hire.
+4. Create New Employee
+----------------------
+Endpoint:
+  POST /api/gateway.php/{subdomain}/v1/employees/
+Description:
+  - Converts selected applicant data into a new employee record.
+  - Required fields: firstName, lastName (plus any other core required fields).
+Automation:
+  Trigger this to programmatically add hires without using the UI.
+5. Update Employee Personal & Job Info
+--------------------------------------
+Endpoint:
+  PUT /api/v1/employees/{employeeId}
+Description:
+  - Updates core employee fields: hireDate, ethnicity, jobTitle, department, location, birthDate, ssn, employeeNumber, etc.
+Automation:
+  Populate all personal and job-related attributes for the new hire in one call.
+6. Add or Update Compensation Record
+------------------------------------
+Endpoint:
+  POST /api/v1/employees/{employeeId}/tables/compensation/
+Description:
+  - Inserts a compensation table row with payRate, payType, payPer (time unit), currency, and paySchedule.
+  - If a `rowId` is provided, updates that entry; omit `rowId` to create a new row.
+Automation:
+  Set up salary or hourly pay details automatically for each hire.
+7. Grant Self-Service Access
+----------------------------
+Endpoint:
+  POST /api/v1/meta/users
+Description:
+  - Creates or updates a BambooHR user account linked to employeeId.
+  - Payload: employeeId, accessLevel (e.g., 'Employee Self-Service'), loginEmail.
+Automation:
+  Automate portal access provisioning for new hires without manual clicks.
+Usage Sequence
+--------------
+1. **GET** /recruiting/v1/job-openings  
+2. **GET** /recruiting/v1/job-openings/{jobId}/candidates  
+3. **GET** /recruiting/v1/applicants/{applicantId}  
+4. **POST** /employees/ (create)  
+5. **PUT**  /employees/{employeeId} (update personal & job fields)  
+6. **POST** /employees/{employeeId}/tables/compensation/  
+7. **POST** /meta/users (provision access)
