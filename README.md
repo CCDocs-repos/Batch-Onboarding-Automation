@@ -100,8 +100,14 @@ Your Google Sheet should have columns like:
 ## 🤝 Support & Contributions
 - **Issues:** Please open an issue on GitHub for bugs or feature requests.
 - **Pull Requests:** Contributions are welcome! Please submit a PR.
-- **Contact:** For urgent help, contact the project maintainer or your HR/IT team.
+- **Contact:** Maintainers (Below).
 
+---
+
+## 👷 Maintainers
+- Raghav – Developer
+- Prathmesh - Developer
+  
 ---
 
 ## 📄 License
