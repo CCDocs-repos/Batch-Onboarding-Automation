@@ -1,3 +1,8 @@
+# Ignore environment files
 .env
-.json
-.png
+
+# Ignore JSON files
+*.json
+
+# Ignore node_modules folder (common example)
+node_modules/
