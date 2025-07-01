@@ -70,7 +70,7 @@ WEBWORK_USERNAME = os.getenv("WEBWORK_USERNAME")  # Admin username
 WEBWORK_PASSWORD = os.getenv("WEBWORK_PASSWORD")  # Admin password
 
 SHEET_ID     = os.getenv("SHEET_ID", "1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA")
-SHEET_NAME   = os.getenv("SHEET_NAME", "Sheet1")
+SHEET_NAME   = os.getenv("SHEET_NAME", "Hires")  # Updated to match the actual sheet name
 
 SLACK_BOT_TOKEN  = os.getenv("SLACK_BOT_TOKEN")
 SLACK_CHANNEL    = os.getenv("SLACK_CHANNEL", "#hr-alerts")
@@ -102,12 +102,12 @@ def setup_slack_client():
 # ─── Helper Functions ─────────────────────────────────────────────────────────
 
 def read_pending_rows(sheets):
-    """Fetch rows where Status column is blank."""
+    """Fetch rows where Overall status column is blank."""
     try:
         logger.info(f"Reading data from sheet: {SHEET_ID}, tab: {SHEET_NAME}")
         resp = sheets.values().get(
             spreadsheetId=SHEET_ID,
-            range=f"{SHEET_NAME}!A1:I"  # Expanded to include all 9 columns
+            range=f"{SHEET_NAME}!A1:P"  # Include all columns up to P
         ).execute()
         rows = resp.get("values", [])
         
@@ -116,6 +116,9 @@ def read_pending_rows(sheets):
             return [], []
             
         headers = rows[0]
+        # Clean up header names by stripping whitespace
+        clean_headers = [h.strip() if isinstance(h, str) else h for h in headers]
+        
         data = rows[1:]
         pending = []
         
@@ -124,9 +127,30 @@ def read_pending_rows(sheets):
         for i, row in enumerate(data, start=2):
             # Extend row to match headers length
             row += [""] * (len(headers) - len(row))
+            
+            # Create dictionary with both original and cleaned headers
             row_dict = dict(zip(headers, row))
-            if row_dict.get("Status", "").strip() == "":
-                pending.append((i, row_dict))
+            clean_row_dict = dict(zip(clean_headers, row))
+            
+            # Merge the dictionaries, preferring original headers
+            merged_dict = {**clean_row_dict, **row_dict}
+            
+            # Check if this row is pending (Overall status is empty)
+            status_value = merged_dict.get("Overall status", "").strip()
+            if status_value == "":
+                # Convert date format if needed
+                if "Start Date" in merged_dict:
+                    date_str = merged_dict["Start Date"].strip()
+                    # Try to convert MM/DD/YY to YYYY-MM-DD
+                    try:
+                        from datetime import datetime
+                        dt = datetime.strptime(date_str, "%m/%d/%y")
+                        merged_dict["Start Date"] = dt.strftime("%Y-%m-%d")
+                    except:
+                        # If conversion fails, keep original
+                        pass
+                        
+                pending.append((i, merged_dict))
                 
         logger.info(f"Found {len(pending)} pending hires to process")
         return headers, pending
@@ -135,15 +159,52 @@ def read_pending_rows(sheets):
         raise
 
 def write_back(sheets, row_index, status, notes):
-    """Update Status & Notes for a specific row."""
+    """Update Overall status & Notes for a specific row."""
     try:
         logger.info(f"Updating row {row_index} with status: {status}, notes: {notes}")
+        
+        # First, get the current headers to find the correct columns
+        resp = sheets.values().get(
+            spreadsheetId=SHEET_ID,
+            range=f"{SHEET_NAME}!A1:P1"  # Get header row
+        ).execute()
+        
+        headers = resp.get("values", [[]])[0]
+        
+        # Find the column indices for "Overall status" and "Notes"
+        status_col = None
+        notes_col = None
+        
+        for i, header in enumerate(headers):
+            if header.strip() == "Overall status":
+                status_col = i
+            if header.strip() == "Notes":
+                notes_col = i
+        
+        if status_col is None or notes_col is None:
+            logger.error("Could not find 'Overall status' or 'Notes' columns in the sheet")
+            return
+            
+        # Convert column indices to A1 notation
+        status_col_letter = chr(65 + status_col)  # A=65 in ASCII
+        notes_col_letter = chr(65 + notes_col)
+        
+        # Update status column
         sheets.values().update(
             spreadsheetId=SHEET_ID,
-            range=f"{SHEET_NAME}!H{row_index}:I{row_index}",  # H=Status, I=Notes
+            range=f"{SHEET_NAME}!{status_col_letter}{row_index}",
             valueInputOption="RAW",
-            body={"values": [[status, notes]]}
+            body={"values": [[status]]}
         ).execute()
+        
+        # Update notes column
+        sheets.values().update(
+            spreadsheetId=SHEET_ID,
+            range=f"{SHEET_NAME}!{notes_col_letter}{row_index}",
+            valueInputOption="RAW",
+            body={"values": [[notes]]}
+        ).execute()
+        
         logger.info(f"Row {row_index} updated successfully")
     except Exception as e:
         logger.error(f"Error updating Google Sheet: {str(e)}")
@@ -223,6 +284,51 @@ def send_bamboo_signature_request(employee, auth_headers):
         logger.error(f"Error sending BambooHR signature request: {str(e)}")
         return 500, str(e)
 
+def add_user_to_team(email, team_name, auth_headers):
+    """Add an existing user to a team."""
+    try:
+        logger.info(f"Adding user {email} to team {team_name}")
+        
+        # Step 1: Find the user by email
+        resp = requests.get(f"https://www.webwork-tracker.com/rest-api/users", headers=auth_headers)
+        resp.raise_for_status()
+        
+        users = resp.json()
+        user = None
+        for u in users:
+            if u.get("email") == email:
+                user = u
+                break
+        
+        if not user:
+            logger.error(f"User with email {email} not found")
+            return False
+        
+        user_id = user.get("id")
+        logger.info(f"Found user with ID: {user_id}")
+        
+        # Step 2: Add user to team
+        # Note: This is a guess at the API endpoint - may need adjustment
+        payload = {
+            "user_id": user_id,
+            "team": team_name
+        }
+        
+        resp = requests.post(f"https://www.webwork-tracker.com/rest-api/users/teams", 
+                            json=payload, headers=auth_headers)
+        
+        if resp.status_code == 200:
+            logger.info(f"Successfully added user to team {team_name}")
+            return True
+        else:
+            logger.error(f"Failed to add user to team. Status code: {resp.status_code}")
+            logger.error(f"Response: {resp.text}")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error adding user to team: {str(e)}")
+        return False
+
 def invite_webwork(employee):
     """Invite employee to WebWork time tracking system."""
     if not all([WEBWORK_URL, WEBWORK_USERNAME, WEBWORK_PASSWORD]):
@@ -237,13 +343,15 @@ def invite_webwork(employee):
     try:
         logger.info(f"Creating WebWork account for {employee['Email']}")
         
+        # First try with teams array
         payload = {
             "email":      employee["Email"],
             "firstname": employee["First Name"],
             "lastname":  employee["Last Name"],
             "position":   employee["Position"],
             "role":       30,
-            "team":       employee.get("Onboarding Tier", "")
+            "teams":      ["New Joiners - Onboarding Team", "AGENTS"],  # Try with array first
+            "project":    "Training"  # Assign Training project by default
         }
         
         r = requests.post(WEBWORK_URL, json=payload, headers=headers)
@@ -252,14 +360,40 @@ def invite_webwork(employee):
         # so we need to check the JSON response body.
         response_json = r.json()
         if response_json.get("success") is False:
-            # It's an error, construct a meaningful message
-            error_messages = response_json.get("message", ["Unknown WebWork error."])
-            error_text = "; ".join(error_messages)
-            logger.error(f"WebWork API error for {employee['Email']}: {error_text}")
-            return 500, error_text
+            # If teams array failed, try with single team
+            logger.warning(f"Failed with teams array. Trying with single team.")
+            
+            payload = {
+                "email":      employee["Email"],
+                "firstname": employee["First Name"],
+                "lastname":  employee["Last Name"],
+                "position":   employee["Position"],
+                "role":       30,
+                "team":       "New Joiners - Onboarding Team",  # Primary team
+                "project":    "Training"  # Assign Training project by default
+            }
+            
+            r = requests.post(WEBWORK_URL, json=payload, headers=headers)
+            response_json = r.json()
+            
+            if response_json.get("success") is False:
+                # It's still an error
+                error_messages = response_json.get("message", ["Unknown WebWork error."])
+                error_text = "; ".join(error_messages)
+                logger.error(f"WebWork API error for {employee['Email']}: {error_text}")
+                return 500, error_text
+            else:
+                # Success with single team, now add to second team
+                logger.info(f"WebWork account created successfully with primary team. Adding to second team.")
+                if add_user_to_team(employee["Email"], "AGENTS", headers):
+                    logger.info(f"Successfully added user to AGENTS team")
+                    return 200, "WebWork account created successfully and added to both teams."
+                else:
+                    logger.warning(f"Created account but failed to add to second team")
+                    return 200, "WebWork account created but failed to add to second team."
         else:
-            logger.info(f"WebWork account created successfully for {employee['Email']}")
-            return 200, "WebWork account created successfully."
+            logger.info(f"WebWork account created successfully for {employee['Email']} with multiple teams")
+            return 200, "WebWork account created successfully with multiple teams."
             
     except Exception as e:
         logger.error(f"Error creating WebWork account: {str(e)}")
@@ -291,13 +425,39 @@ def create_employee(subdomain, api_key, person):
     Returns the new employeeId on success, or None+error text on failure.
     """
     url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/"
+    
+    # Extract supervisor ID from "Reports To" field if present
+    supervisor_id = None
+    reports_to = person.get("Reports To", "")
+    if reports_to:
+        # Extract ID from format like "Name (ID)"
+        import re
+        match = re.search(r'\((\d+)\)$', reports_to)
+        if match:
+            supervisor_id = match.group(1)
+    
+    # Build comprehensive payload with all available fields
     payload = {
         "firstName": person["First Name"],
         "lastName":  person["Last Name"],
         "workEmail": person["Email"],
-        "hireDate":  person["Start Date"]
-        # optional: department, location, etc, if you want defaults
+        "hireDate":  person["Start Date"],
+        "jobTitle":  person.get("Job Title", person.get("Position", "")),
+        "department": person.get("Department", ""),
+        "division": person.get("Division", ""),
+        "location": person.get("Location", ""),
+        "employmentStatus": person.get("Employment Status", "")
     }
+    
+    # Add supervisor if found
+    if supervisor_id:
+        payload["supervisor"] = supervisor_id
+    
+    # Remove any empty fields
+    payload = {k: v for k, v in payload.items() if v}
+    
+    logger.info(f"Creating employee with data: {payload}")
+    
     auth = HTTPBasicAuth(api_key, "x")
     for attempt in range(3):
         r = requests.post(url, json=payload, auth=auth)
@@ -314,10 +474,35 @@ def update_employee(subdomain, api_key, employee_id, person):
     2. PUT /employees/{id} to populate job & personal fields.
     """
     url = f"https://api.bamboohr.com/api/v1/employees/{employee_id}"
+    
+    # Extract the supervisor ID from "Reports To" field if present
+    supervisor_id = None
+    reports_to = person.get("Reports To", "")
+    if reports_to:
+        # Extract ID from format like "Name (ID)"
+        import re
+        match = re.search(r'\((\d+)\)$', reports_to)
+        if match:
+            supervisor_id = match.group(1)
+    
+    # Build payload with all job information fields
     payload = {
-        "jobTitle": person["Position"],
-        # add more mappings here if needed
+        "jobTitle": person.get("Job Title", person.get("Position", "")),  # Try Job Title first, fall back to Position
+        "department": person.get("Department", ""),
+        "division": person.get("Division", ""),
+        "location": person.get("Location", ""),
+        "employmentStatus": person.get("Employment Status", ""),
     }
+    
+    # Add supervisor ID if found
+    if supervisor_id:
+        payload["supervisor"] = supervisor_id
+    
+    # Remove any empty fields
+    payload = {k: v for k, v in payload.items() if v}
+    
+    logger.info(f"Updating employee {employee_id} with job information: {payload}")
+    
     auth = HTTPBasicAuth(api_key, "x")
     for attempt in range(3):
         r = requests.put(url, json=payload, auth=auth)
@@ -331,13 +516,31 @@ def add_compensation(subdomain, api_key, employee_id, person):
     3. POST /employees/{id}/tables/compensation to set up pay.
     """
     url = f"https://api.bamboohr.com/api/v1/employees/{employee_id}/tables/compensation/"
+    
+    # Get values from sheet with fallbacks to default values
+    pay_rate = person.get("Pay Rate", person.get("Salary", ""))
+    pay_type = person.get("Pay Type", "Hourly")  # Default to Hourly if not specified
+    pay_schedule = person.get("Pay Schedule", "Biweekly")  # Default to Biweekly if not specified
+    
+    # Determine payPer based on pay type
+    pay_per = "Hour"
+    if pay_type and pay_type.lower() in ["salary", "salaried"]:
+        pay_per = "Year"
+    
     payload = {
-        "payRate": person["Salary"],
-        "payPer": "Hour",
+        "payRate": pay_rate,
+        "payPer": pay_per,
         "currency": "USD",
-        "payType": "Hourly",
-        "paySchedule": "Biweekly"
+        "payType": pay_type,
+        "paySchedule": pay_schedule,
+        "effectiveDate": person.get("Start Date", "")  # Use start date as effective date
     }
+    
+    # Remove any empty fields
+    payload = {k: v for k, v in payload.items() if v}
+    
+    logger.info(f"Adding compensation for employee {employee_id}: {payload}")
+    
     auth = HTTPBasicAuth(api_key, "x")
     for attempt in range(3):
         r = requests.post(url, json=payload, auth=auth)
@@ -363,6 +566,143 @@ def provision_self_service(subdomain, api_key, employee_id, person):
             return True, None
         time.sleep(2 ** attempt)
     return False, f"Provision failed: {r.status_code} {r.text}"
+
+def send_new_hire_packet(employee_id, auth_headers):
+    """
+    Send a new hire packet to the employee via BambooHR.
+    This function is called after an employee is created in BambooHR.
+    """
+    try:
+        logger.info(f"Sending new hire packet to employee ID: {employee_id}")
+        
+        # Construct URL for sending new hire packet
+        url = f"https://ccdocs.bamboohr.com/ajax/onboarding/sendPacket"
+        
+        # Prepare payload for the request
+        payload = {
+            "employeeId": employee_id,
+            "sendWelcomeEmail": True
+        }
+        
+        # Make authenticated request
+        response = requests.post(url, json=payload, headers=auth_headers)
+        
+        if response.status_code == 200:
+            logger.info(f"New hire packet sent successfully to employee ID: {employee_id}")
+            return 200, "New hire packet sent successfully"
+        else:
+            logger.error(f"BambooHR API error when sending new hire packet: {response.status_code} - {response.text}")
+            return response.status_code, response.text
+            
+    except Exception as e:
+        logger.error(f"Error sending new hire packet: {str(e)}")
+        return 500, str(e)
+
+def find_candidate_by_email(subdomain, api_key, email):
+    """
+    Search for a candidate in BambooHR's applicant tracking system by email.
+    Returns the candidate ID if found, None otherwise.
+    """
+    if not email:
+        logger.error("Cannot search for candidate: email is missing")
+        return None, "Email is missing"
+        
+    try:
+        logger.info(f"Searching for candidate with email: {email}")
+        
+        # API endpoint for applicant tracking system
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/applicant_tracking/applications"
+        
+        # Add query parameter for email search
+        params = {
+            "email": email
+        }
+        
+        # Make authenticated request
+        auth = HTTPBasicAuth(api_key, "x")
+        response = requests.get(url, params=params, auth=auth)
+        
+        if response.status_code == 200:
+            applications = response.json()
+            
+            if applications and len(applications) > 0:
+                # Found at least one application with this email
+                candidate_id = applications[0].get("id")
+                logger.info(f"Found candidate with ID: {candidate_id} for email: {email}")
+                return candidate_id, None
+            else:
+                logger.info(f"No candidates found with email: {email}")
+                return None, "No candidates found with this email"
+        else:
+            logger.error(f"Error searching for candidate: {response.status_code} - {response.text}")
+            return None, f"API error: {response.status_code}"
+            
+    except Exception as e:
+        logger.error(f"Exception while searching for candidate: {str(e)}")
+        return None, str(e)
+
+def hire_candidate(subdomain, api_key, candidate_id, employee_data):
+    """
+    Convert a candidate to an employee in BambooHR.
+    """
+    if not candidate_id:
+        logger.error("Cannot hire candidate: candidate ID is missing")
+        return None, "Candidate ID is missing"
+        
+    try:
+        logger.info(f"Hiring candidate with ID: {candidate_id}")
+        
+        # API endpoint for hiring a candidate
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/applicant_tracking/applications/{candidate_id}/hire"
+        
+        # Extract supervisor ID from "Reports To" field if present
+        supervisor_id = None
+        reports_to = employee_data.get("Reports To", "")
+        if reports_to:
+            # Extract ID from format like "Name (ID)"
+            import re
+            match = re.search(r'\((\d+)\)$', reports_to)
+            if match:
+                supervisor_id = match.group(1)
+        
+        # Prepare payload with employee data
+        payload = {
+            "firstName": employee_data["First Name"],
+            "lastName": employee_data["Last Name"],
+            "jobTitle": employee_data.get("Job Title", employee_data.get("Position", "")),
+            "department": employee_data.get("Department", ""),
+            "division": employee_data.get("Division", ""),
+            "location": employee_data.get("Location", ""),
+            "hireDate": employee_data["Start Date"],
+            "status": "active",
+            "employmentStatus": employee_data.get("Employment Status", "")
+        }
+        
+        # Add supervisor if found
+        if supervisor_id:
+            payload["supervisor"] = supervisor_id
+        
+        # Remove any empty fields
+        payload = {k: v for k, v in payload.items() if v}
+        
+        logger.info(f"Hiring candidate with data: {payload}")
+        
+        # Make authenticated request
+        auth = HTTPBasicAuth(api_key, "x")
+        response = requests.post(url, json=payload, auth=auth)
+        
+        if response.status_code == 200 or response.status_code == 201:
+            result = response.json()
+            employee_id = result.get("employeeId")
+            logger.info(f"Successfully hired candidate {candidate_id} as employee {employee_id}")
+            return employee_id, None
+        else:
+            logger.error(f"Error hiring candidate: {response.status_code} - {response.text}")
+            return None, f"API error: {response.status_code} - {response.text}"
+            
+    except Exception as e:
+        logger.error(f"Exception while hiring candidate: {str(e)}")
+        return None, str(e)
 
 # ─── Main Logic ────────────────────────────────────────────────────────────────
 
@@ -625,8 +965,16 @@ def main(test_mode=False):
             "Last Name": "User",
             "Email": "test@example.com",  # Use a real email you can check
             "Position": "Software Developer",
+            "Job Title": "Software Developer",
             "Start Date": "2025-07-01",
-            "Salary": "75000",
+            "Reports To": "Alberto Arellano Perez (601)",  # Format: Name (ID)
+            "Department": "Engineering",
+            "Division": "Technology",
+            "Location": "Remote",
+            "Pay Type": "Salary",
+            "Pay Rate": "75000",
+            "Pay Schedule": "Biweekly",
+            "Employment Status": "Full-Time",
             "Onboarding Tier": "Standard",
             "Status": ""
         }
@@ -634,10 +982,20 @@ def main(test_mode=False):
         # Process test employee
         logger.info(f"Processing test employee: {test_employee['First Name']} {test_employee['Last Name']}")
         
-        # ── New BambooHR steps ────────────────────────────────────────────────────
-        eid, err = create_employee(BAMBOO_SUB, BAMBOO_KEY, test_employee)
+        # ── Check if candidate already exists in BambooHR ────────────────────────
+        candidate_id, candidate_err = find_candidate_by_email(BAMBOO_SUB, BAMBOO_KEY, test_employee.get("Email"))
+        
+        if candidate_id:
+            # Candidate exists, hire them directly
+            logger.info(f"Found existing candidate with ID {candidate_id} for {test_employee['Email']}")
+            eid, err = hire_candidate(BAMBOO_SUB, BAMBOO_KEY, candidate_id, test_employee)
+        else:
+            # No candidate found, create a new employee directly
+            logger.info(f"No existing candidate found for {test_employee['Email']}, creating new employee")
+            eid, err = create_employee(BAMBOO_SUB, BAMBOO_KEY, test_employee)
+            
         if err:
-            logger.error(f"Create Error: {err}")
+            logger.error(f"Create/Hire Error: {err}")
         else:
             # Update the test_employee with the new ID
             test_employee["ID"] = eid
@@ -657,6 +1015,11 @@ def main(test_mode=False):
                         # ── Existing signature + WebWork steps ───────────────────────────────────
                         b_code, b_resp = bamboo_manager.send_signature_request(test_employee)
                         logger.info(f"BambooHR signature request result: {b_code} - {b_resp}")
+                        
+                        # Send new hire packet by default
+                        logger.info("Sending new hire packet in test mode...")
+                        packet_code, packet_resp = send_new_hire_packet(eid, bamboo_manager.headers)
+                        logger.info(f"New hire packet result: {packet_code} - {packet_resp}")
                         
                         # Create WebWork account
                         w_code, w_resp = invite_webwork(test_employee)
@@ -693,10 +1056,20 @@ def main(test_mode=False):
     for row_index, emp in pending:
         logger.info(f"Processing hire: {emp['First Name']} {emp['Last Name']}")
         
-        # ── New BambooHR steps ────────────────────────────────────────────────────
-        eid, err = create_employee(BAMBOO_SUB, BAMBOO_KEY, emp)
+        # ── Check if candidate already exists in BambooHR ────────────────────────
+        candidate_id, candidate_err = find_candidate_by_email(BAMBOO_SUB, BAMBOO_KEY, emp.get("Email"))
+        
+        if candidate_id:
+            # Candidate exists, hire them directly
+            logger.info(f"Found existing candidate with ID {candidate_id} for {emp['Email']}")
+            eid, err = hire_candidate(BAMBOO_SUB, BAMBOO_KEY, candidate_id, emp)
+        else:
+            # No candidate found, create a new employee directly
+            logger.info(f"No existing candidate found for {emp['Email']}, creating new employee")
+            eid, err = create_employee(BAMBOO_SUB, BAMBOO_KEY, emp)
+            
         if err:
-            notes = f"Create Error: {err}"
+            notes = f"Create/Hire Error: {err}"
             write_back(sheets, row_index, "❌", notes)
             failures += 1
             continue
@@ -731,6 +1104,12 @@ def main(test_mode=False):
         # Throttle API calls
         time.sleep(1)
         
+        # Send new hire packet by default for all new employees
+        logger.info(f"Sending new hire packet for {emp['First Name']} {emp['Last Name']}")
+        packet_code, packet_resp = send_new_hire_packet(eid, bamboo_manager.headers)
+        if packet_code != 200:
+            logger.warning(f"Failed to send new hire packet: {packet_resp}")
+        
         # Create WebWork account
         w_code, w_resp = invite_webwork(emp)
 
@@ -738,6 +1117,7 @@ def main(test_mode=False):
         notes = []
         if b_code != 200: notes.append(f"BambooHR error: {b_resp}")
         if w_code != 200: notes.append(f"WebWork error: {w_code}")
+        if packet_code != 200: notes.append(f"New hire packet error: {packet_resp}")
         
         status = "✔️" if not notes else "❌"
         write_back(sheets, row_index, status, "; ".join(notes) or "OK")
