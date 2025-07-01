@@ -1,0 +1,337 @@
+2025-07-02 03:58:11,830 - INFO - Detailed logging enabled - check log file for complete information
+2025-07-02 03:58:11,830 - INFO - BambooHR Subdomain: ccdocs
+2025-07-02 03:58:11,830 - INFO - BambooHR API Key: ********bf81
+2025-07-02 03:58:11,830 - INFO - WebWork URL: https://www.webwork-tracker.com/rest-api/users
+2025-07-02 03:58:11,830 - INFO - WebWork Username: Set
+2025-07-02 03:58:11,830 - INFO - Google Sheet ID: 1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA
+2025-07-02 03:58:11,831 - INFO - Google Sheet Name: Sheet1
+2025-07-02 03:58:11,831 - INFO - Initializing Google Sheets...
+2025-07-02 03:58:12,090 - INFO - Initializing Slack client...
+2025-07-02 03:58:12,091 - INFO - All non-bamboo clients initialized.
+2025-07-02 03:58:12,094 - INFO - --- RUNNING IN PRODUCTION MODE ---
+2025-07-02 03:58:12,094 - INFO - Reading pending rows from Google Sheet...
+2025-07-02 03:58:12,094 - INFO - Reading data from sheet: 1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA, tab: Sheet1
+2025-07-02 03:58:12,788 - INFO - Found 2 total rows, checking for pending hires...
+2025-07-02 03:58:12,790 - INFO - Found 2 pending hires to process
+2025-07-02 03:58:12,790 - INFO - Processing hire: Prathmesh  Test-1
+2025-07-02 03:58:12,790 - INFO - Employee data: {
+  "First Name": "Prathmesh ",
+  "Last Name": "Test-1",
+  "Email": "prathmeshkunturwar7@gmail.com",
+  "Start Date": "2025-07-01",
+  "Onboarding Tier": "NA",
+  "Employment Status": "Full-Time",
+  "Notes": "OK",
+  "Job Title": "Call Center Agent",
+  "Reports To": "Raghav Deshwal (2069)",
+  "Department": "Call Center",
+  "Division": "Customer Service",
+  "Location": "CC Docs Remote",
+  "Pay Rate": "4.00",
+  "Pay Type": "Hourly",
+  "Pay Schedule": "Twice Per Month",
+  "Overall status": "",
+  "First Name ": "Prathmesh ",
+  "Last Name ": "Test-1",
+  " Start Date": "2025-07-01",
+  " Onboarding Tier": "NA",
+  "Employment Status ": "Full-Time",
+  "Pay Rate ": "4.00"
+}
+2025-07-02 03:58:12,793 - INFO - === STEP 1: CHECKING FOR EXISTING EMPLOYEE ===
+2025-07-02 03:58:12,793 - INFO - Checking if employee with email prathmeshkunturwar7@gmail.com already exists in BambooHR
+2025-07-02 03:58:15,009 - INFO - Retrieved directory with 208 employees
+2025-07-02 03:58:15,009 - INFO - Found existing employee with ID 2416 for email prathmeshkunturwar7@gmail.com
+2025-07-02 03:58:15,010 - INFO - Found existing employee with ID 2416 for prathmeshkunturwar7@gmail.com
+2025-07-02 03:58:15,010 - INFO - Updating existing employee with ID 2416
+2025-07-02 03:58:15,010 - INFO - Updating employee 2416 with job information: {'jobTitle': 'Call Center Agent', 'department': 'Call Center', 'division': 'Customer Service', 'location': 'CC Docs Remote', 'reportsTo': '2069'}
+2025-07-02 03:58:15,011 - INFO - XML payload: <employee><field id="jobTitle">Call Center Agent</field><field id="department">Call Center</field><field id="division">Customer Service</field><field id="location">CC Docs Remote</field><field id="reportsTo">2069</field></employee>
+2025-07-02 03:58:15,011 - INFO - Sending update employee request (attempt 1/3)...
+2025-07-02 03:58:16,172 - INFO - Successfully updated employee 2416
+2025-07-02 03:58:16,173 - INFO - === STEP 6: PROVISIONING SELF-SERVICE ACCESS (EXISTING EMPLOYEE) ===
+2025-07-02 03:58:16,173 - INFO - === STARTING SELF-SERVICE PROVISION FOR EMPLOYEE 2416 ===
+2025-07-02 03:58:16,173 - INFO - Employee email: prathmeshkunturwar7@gmail.com
+2025-07-02 03:58:16,173 - INFO - Employee name: Prathmesh  Test-1
+2025-07-02 03:58:16,174 - INFO - METHOD 1: Attempting traditional /meta/users endpoint
+2025-07-02 03:58:16,174 - INFO - Trying JSON request to https://api.bamboohr.com/api/gateway.php/ccdocs/v1/meta/users
+2025-07-02 03:58:16,174 - INFO - JSON payload: {
+  "employeeId": "2416",
+  "email": "prathmeshkunturwar7@gmail.com",
+  "accessLevel": "Employee Self-Service"
+}
+2025-07-02 03:58:17,262 - INFO - Response status: 404
+2025-07-02 03:58:17,263 - INFO - Response headers: {'Date': 'Tue, 01 Jul 2025 22:28:17 GMT', 'Content-Type': 'text/html; charset=UTF-8', 'Transfer-Encoding': 'chunked', 'Connection': 'keep-alive', 'Set-Cookie': 'AWSALBTG=TO9zquxfcGuVNg98dwci5fDU+iRqUHsTnIGUwMZPt3Z6a+5TjCX489xEVbtaon3JOi1bYERlmJDtjKspVBKDoUbd7VhDwIKmbb1qi80vDhEod1nujJH3G5MxJDgEGLpBb57fG6wwzv2MqcX//DA+RS39MqRiQyuQJxr77YtnHb21; Expires=Tue, 08 Jul 2025 22:28:17 GMT; Path=/, AWSALBTGCORS=TO9zquxfcGuVNg98dwci5fDU+iRqUHsTnIGUwMZPt3Z6a+5TjCX489xEVbtaon3JOi1bYERlmJDtjKspVBKDoUbd7VhDwIKmbb1qi80vDhEod1nujJH3G5MxJDgEGLpBb57fG6wwzv2MqcX//DA+RS39MqRiQyuQJxr77YtnHb21; Expires=Tue, 08 Jul 2025 22:28:17 GMT; Path=/; SameSite=None; Secure', 'Server': 'nginx', 'Vary': 'Accept-Encoding', 'Cache-Control': 'no-cache, private', 'Content-Encoding': 'gzip'}
+2025-07-02 03:58:17,264 - INFO - Response body: Oops! That page does not exist.
+2025-07-02 03:58:17,264 - INFO - JSON failed, trying XML format
+2025-07-02 03:58:17,264 - INFO - XML payload: <?xml version="1.0" encoding="UTF-8"?>
+<user>
+    <employeeId>2416</employeeId>
+    <email>prathmeshkunturwar7@gmail.com</email>
+    <accessLevel>Employee Self-Service</accessLevel>
+</user>
+2025-07-02 03:58:18,337 - INFO - XML Response status: 404
+2025-07-02 03:58:18,337 - INFO - XML Response body: Oops! That page does not exist.
+2025-07-02 03:58:18,338 - WARNING - ⚠️ /meta/users endpoint failed: /meta/users endpoint not found (possibly deprecated)
+2025-07-02 03:58:18,338 - INFO - METHOD 2: Attempting onboarding workflow trigger
+2025-07-02 03:58:18,338 - INFO - Trying onboarding trigger at https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2416/onboarding
+2025-07-02 03:58:18,339 - INFO - Payload: {
+  "sendWelcomeEmail": true,
+  "enableSelfService": true
+}
+2025-07-02 03:58:19,374 - INFO - Onboarding response status: 404
+2025-07-02 03:58:19,374 - INFO - Onboarding response body: Oops! That page does not exist.
+2025-07-02 03:58:19,375 - WARNING - ⚠️ Onboarding trigger failed: Onboarding endpoint not available
+2025-07-02 03:58:19,375 - INFO - METHOD 3: Attempting welcome email endpoint
+2025-07-02 03:58:19,375 - INFO - Trying welcome email at https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2416/welcome
+2025-07-02 03:58:19,376 - INFO - Payload: {
+  "email": "prathmeshkunturwar7@gmail.com",
+  "includeLoginInstructions": true
+}
+2025-07-02 03:58:20,451 - INFO - Welcome email response status: 404
+2025-07-02 03:58:20,451 - INFO - Welcome email response body: Oops! That page does not exist.
+2025-07-02 03:58:20,452 - INFO - Welcome email endpoint failed, trying notification endpoint
+2025-07-02 03:58:21,498 - INFO - Notification response status: 404
+2025-07-02 03:58:21,498 - INFO - Notification response body: Oops! That page does not exist.
+2025-07-02 03:58:21,499 - INFO - Notification endpoint failed, trying email trigger via update
+2025-07-02 03:58:22,696 - INFO - Email trigger response status: 200
+2025-07-02 03:58:22,696 - INFO - Email trigger response body: 
+2025-07-02 03:58:22,696 - INFO - ✅ Successfully sent welcome email
+2025-07-02 03:58:22,697 - INFO - Working with employee ID: 2416
+2025-07-02 03:58:22,697 - INFO - === STEP 7: SENDING SIGNATURE REQUEST ===
+2025-07-02 03:58:22,697 - INFO - Updating BambooHR profile for employee ID: 2416
+2025-07-02 03:58:22,697 - INFO - No new data from the sheet to update in BambooHR.
+2025-07-02 03:58:22,698 - INFO - Preparing contract data for Prathmesh  Test-1
+2025-07-02 03:58:22,698 - INFO - Contract data prepared: {'contractorName': 'Prathmesh  Test-1', 'employeeName': 'Prathmesh  Test-1', 'signatureDate': 'July 02, 2025', 'position': '', 'startDate': '2025-07-01', 'salary': '', 'email': 'prathmeshkunturwar7@gmail.com'}
+2025-07-02 03:58:22,698 - INFO - Using contract data: {'contractorName': 'Prathmesh  Test-1', 'employeeName': 'Prathmesh  Test-1', 'signatureDate': 'July 02, 2025', 'position': '', 'startDate': '2025-07-01', 'salary': '', 'email': 'prathmeshkunturwar7@gmail.com'}
+2025-07-02 03:58:22,698 - INFO - Sending signature request with mapped fields to employee ID 2416...
+2025-07-02 03:58:23,731 - WARNING - BambooHR session expired. Re-authenticating...
+2025-07-02 03:58:23,732 - INFO - Creating a new BambooHR session via automated browser...
+2025-07-02 03:58:37,589 - INFO - Successfully saved new session headers.
+2025-07-02 03:58:37,590 - INFO - New BambooHR session created successfully.
+2025-07-02 03:58:41,176 - INFO - Successfully sent signature request for employee ID 2416
+2025-07-02 03:58:42,178 - INFO - === STEP 8: SENDING NEW HIRE PACKET ===
+2025-07-02 03:58:42,178 - INFO - Sending new hire packet for Prathmesh  Test-1
+2025-07-02 03:58:42,178 - INFO - === STARTING NEW HIRE PACKET SEND FOR EMPLOYEE 2416 ===
+2025-07-02 03:58:42,178 - INFO - METHOD 1: Trying AJAX onboarding endpoint
+2025-07-02 03:58:42,178 - INFO - AJAX URL: https://ccdocs.bamboohr.com/ajax/onboarding/sendPacket
+2025-07-02 03:58:42,180 - INFO - AJAX payload: {
+  "employeeId": "2416",
+  "sendWelcomeEmail": true
+}
+2025-07-02 03:58:42,180 - INFO - Using headers: {
+  "X-Requested-With": "XMLHttpRequest",
+  "Referer": "https://ccdocs.bamboohr.com/files/",
+  "Accept": "application/json, text/plain, */*",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+}
+2025-07-02 03:58:43,500 - INFO - AJAX response status: 404
+2025-07-02 03:58:43,500 - INFO - AJAX response headers: {'Date': 'Tue, 01 Jul 2025 22:28:43 GMT', 'Content-Type': 'text/html; charset=UTF-8', 'Transfer-Encoding': 'chunked', 'Connection': 'keep-alive', 'vary': 'Accept-Encoding', 'Content-Encoding': 'gzip', 'cf-cache-status': 'DYNAMIC', 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload', 'Set-Cookie': '_cfuvid=iYXWF40MtIciyV_e9qz65Xa7DcD.rbAO5LBqyJS3CnI-1751408923553-0.0.1.1-604800000; path=/; domain=.bamboohr.com; HttpOnly; Secure; SameSite=None', 'Server': 'cloudflare', 'CF-RAY': '958956841d9d8adf-DEL'}
+2025-07-02 03:58:43,501 - INFO - AJAX response body: 
+    <!DOCTYPE html>
+<html lang="" data-locale="" prefix="og: http://ogp.me/ns#">
+
+<head>
+	
+	<script type="text/javascript">
+(function(ENV, TOKEN) {
+	var isSupportedBrowser = true;
+	var enabledEnvironments = ['prod', 'stage'];
+	var isEnabled = isSupportedBrowser && enabledEnvironments.indexOf(ENV) > -1;
+	var isMobile = false;
+
+	function checkIgnoreCases(isUncaught, args, payload) {
+		var isRemoteUncaught = isIgnoringRemoteUncaught(isUncaught, payload);
+		var isIgnoringUrl = isIgnoringUrlSegment(...
+2025-07-02 03:58:43,503 - INFO - METHOD 2: Trying REST API onboarding endpoint
+2025-07-02 03:58:43,503 - INFO - REST URL: https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2416/onboarding
+2025-07-02 03:58:43,504 - INFO - REST payload: {
+  "sendWelcomeEmail": true,
+  "sendOnboardingPacket": true
+}
+2025-07-02 03:58:44,553 - INFO - REST response status: 404
+2025-07-02 03:58:44,554 - INFO - REST response body: Oops! That page does not exist.
+2025-07-02 03:58:44,554 - INFO - METHOD 3: Trying employee notification endpoint
+2025-07-02 03:58:44,554 - INFO - Notify URL: https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2416/notify
+2025-07-02 03:58:44,555 - INFO - Notify payload: {
+  "type": "welcome",
+  "sendEmail": true
+}
+2025-07-02 03:58:45,625 - INFO - Notify response status: 404
+2025-07-02 03:58:45,626 - INFO - Notify response body: Oops! That page does not exist.
+2025-07-02 03:58:45,626 - INFO - METHOD 4: Trying employee status update to trigger welcome
+2025-07-02 03:58:45,626 - INFO - Update URL: https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2416
+2025-07-02 03:58:45,627 - INFO - Update XML: <?xml version="1.0" encoding="UTF-8"?>
+<employee>
+    <field id="status">Active</field>
+    <field id="sendWelcomeEmail">true</field>
+</employee>
+2025-07-02 03:58:46,781 - INFO - Update response status: 200
+2025-07-02 03:58:46,781 - INFO - Update response body: 
+2025-07-02 03:58:46,781 - INFO - ✅ Successfully updated employee status
+2025-07-02 03:58:46,782 - INFO - === STEP 9: CREATING WEBWORK ACCOUNT ===
+2025-07-02 03:58:46,782 - INFO - Creating WebWork account for prathmeshkunturwar7@gmail.com
+2025-07-02 03:58:47,933 - INFO - WebWork account created successfully for prathmeshkunturwar7@gmail.com with multiple teams
+2025-07-02 03:58:47,933 - INFO - Updating row 2 with status: SUCCESS, notes: OK
+2025-07-02 03:58:49,244 - INFO - Row 2 updated successfully
+2025-07-02 03:58:49,244 - INFO - Successfully processed Prathmesh  Test-1
+2025-07-02 03:58:50,246 - INFO - Processing hire: Prathmesh  Test-2
+2025-07-02 03:58:50,246 - INFO - Employee data: {
+  "First Name": "Prathmesh ",
+  "Last Name": "Test-2",
+  "Email": "raghavdeshwalyoyo@gmail.com",
+  "Start Date": "2025-07-01",
+  "Onboarding Tier": "NA",
+  "Employment Status": "Full-Time",
+  "Notes": "OK",
+  "Job Title": "Call Center Agent",
+  "Reports To": "Raghav Deshwal (2069)",
+  "Department": "Call Center",
+  "Division": "Customer Service",
+  "Location": "CC Docs Remote",
+  "Pay Rate": "4.00",
+  "Pay Type": "Hourly",
+  "Pay Schedule": "Twice Per Month",
+  "Overall status": "",
+  "First Name ": "Prathmesh ",
+  "Last Name ": "Test-2",
+  " Start Date": "2025-07-01",
+  " Onboarding Tier": "NA",
+  "Employment Status ": "Full-Time",
+  "Pay Rate ": "4.00"
+}
+2025-07-02 03:58:50,248 - INFO - === STEP 1: CHECKING FOR EXISTING EMPLOYEE ===
+2025-07-02 03:58:50,248 - INFO - Checking if employee with email raghavdeshwalyoyo@gmail.com already exists in BambooHR
+2025-07-02 03:58:52,488 - INFO - Retrieved directory with 208 employees
+2025-07-02 03:58:52,489 - INFO - Found existing employee with ID 2438 for email raghavdeshwalyoyo@gmail.com
+2025-07-02 03:58:52,489 - INFO - Found existing employee with ID 2438 for raghavdeshwalyoyo@gmail.com
+2025-07-02 03:58:52,490 - INFO - Updating existing employee with ID 2438
+2025-07-02 03:58:52,490 - INFO - Updating employee 2438 with job information: {'jobTitle': 'Call Center Agent', 'department': 'Call Center', 'division': 'Customer Service', 'location': 'CC Docs Remote', 'reportsTo': '2069'}
+2025-07-02 03:58:52,490 - INFO - XML payload: <employee><field id="jobTitle">Call Center Agent</field><field id="department">Call Center</field><field id="division">Customer Service</field><field id="location">CC Docs Remote</field><field id="reportsTo">2069</field></employee>
+2025-07-02 03:58:52,491 - INFO - Sending update employee request (attempt 1/3)...
+2025-07-02 03:58:53,667 - INFO - Successfully updated employee 2438
+2025-07-02 03:58:53,668 - INFO - === STEP 6: PROVISIONING SELF-SERVICE ACCESS (EXISTING EMPLOYEE) ===
+2025-07-02 03:58:53,668 - INFO - === STARTING SELF-SERVICE PROVISION FOR EMPLOYEE 2438 ===
+2025-07-02 03:58:53,669 - INFO - Employee email: raghavdeshwalyoyo@gmail.com
+2025-07-02 03:58:53,669 - INFO - Employee name: Prathmesh  Test-2
+2025-07-02 03:58:53,669 - INFO - METHOD 1: Attempting traditional /meta/users endpoint
+2025-07-02 03:58:53,669 - INFO - Trying JSON request to https://api.bamboohr.com/api/gateway.php/ccdocs/v1/meta/users
+2025-07-02 03:58:53,670 - INFO - JSON payload: {
+  "employeeId": "2438",
+  "email": "raghavdeshwalyoyo@gmail.com",
+  "accessLevel": "Employee Self-Service"
+}
+2025-07-02 03:58:54,717 - INFO - Response status: 404
+2025-07-02 03:58:54,717 - INFO - Response headers: {'Date': 'Tue, 01 Jul 2025 22:28:54 GMT', 'Content-Type': 'text/html; charset=UTF-8', 'Transfer-Encoding': 'chunked', 'Connection': 'keep-alive', 'Set-Cookie': 'AWSALBTG=W4OMY/RdMM+ZclGYf6KWtVWoxUxtxglXlV4RzBl9ufy1WX5APL80vJuGEZs46oO4bjNxunQmWWqvgj+98mpA6gGIDvGUJuo1jAQPFuD+3UEDrVTRe6WCgMKiW39TaSZaNG6N0Z33/0XQUAgStoVIX3kL6LEgBD3HGq54E/hlHD1M; Expires=Tue, 08 Jul 2025 22:28:54 GMT; Path=/, AWSALBTGCORS=W4OMY/RdMM+ZclGYf6KWtVWoxUxtxglXlV4RzBl9ufy1WX5APL80vJuGEZs46oO4bjNxunQmWWqvgj+98mpA6gGIDvGUJuo1jAQPFuD+3UEDrVTRe6WCgMKiW39TaSZaNG6N0Z33/0XQUAgStoVIX3kL6LEgBD3HGq54E/hlHD1M; Expires=Tue, 08 Jul 2025 22:28:54 GMT; Path=/; SameSite=None; Secure', 'Server': 'nginx', 'Vary': 'Accept-Encoding', 'Cache-Control': 'no-cache, private', 'Content-Encoding': 'gzip'}
+2025-07-02 03:58:54,718 - INFO - Response body: Oops! That page does not exist.
+2025-07-02 03:58:54,718 - INFO - JSON failed, trying XML format
+2025-07-02 03:58:54,718 - INFO - XML payload: <?xml version="1.0" encoding="UTF-8"?>
+<user>
+    <employeeId>2438</employeeId>
+    <email>raghavdeshwalyoyo@gmail.com</email>
+    <accessLevel>Employee Self-Service</accessLevel>
+</user>
+2025-07-02 03:58:55,753 - INFO - XML Response status: 404
+2025-07-02 03:58:55,754 - INFO - XML Response body: Oops! That page does not exist.
+2025-07-02 03:58:55,754 - WARNING - ⚠️ /meta/users endpoint failed: /meta/users endpoint not found (possibly deprecated)
+2025-07-02 03:58:55,754 - INFO - METHOD 2: Attempting onboarding workflow trigger
+2025-07-02 03:58:55,755 - INFO - Trying onboarding trigger at https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2438/onboarding
+2025-07-02 03:58:55,755 - INFO - Payload: {
+  "sendWelcomeEmail": true,
+  "enableSelfService": true
+}
+2025-07-02 03:58:56,809 - INFO - Onboarding response status: 404
+2025-07-02 03:58:56,810 - INFO - Onboarding response body: Oops! That page does not exist.
+2025-07-02 03:58:56,810 - WARNING - ⚠️ Onboarding trigger failed: Onboarding endpoint not available
+2025-07-02 03:58:56,810 - INFO - METHOD 3: Attempting welcome email endpoint
+2025-07-02 03:58:56,810 - INFO - Trying welcome email at https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2438/welcome
+2025-07-02 03:58:56,811 - INFO - Payload: {
+  "email": "raghavdeshwalyoyo@gmail.com",
+  "includeLoginInstructions": true
+}
+2025-07-02 03:58:57,872 - INFO - Welcome email response status: 404
+2025-07-02 03:58:57,872 - INFO - Welcome email response body: Oops! That page does not exist.
+2025-07-02 03:58:57,873 - INFO - Welcome email endpoint failed, trying notification endpoint
+2025-07-02 03:58:58,964 - INFO - Notification response status: 404
+2025-07-02 03:58:58,965 - INFO - Notification response body: Oops! That page does not exist.
+2025-07-02 03:58:58,966 - INFO - Notification endpoint failed, trying email trigger via update
+2025-07-02 03:59:00,114 - INFO - Email trigger response status: 200
+2025-07-02 03:59:00,114 - INFO - Email trigger response body: 
+2025-07-02 03:59:00,115 - INFO - ✅ Successfully sent welcome email
+2025-07-02 03:59:00,115 - INFO - Working with employee ID: 2438
+2025-07-02 03:59:00,115 - INFO - === STEP 7: SENDING SIGNATURE REQUEST ===
+2025-07-02 03:59:00,116 - INFO - Updating BambooHR profile for employee ID: 2438
+2025-07-02 03:59:00,116 - INFO - No new data from the sheet to update in BambooHR.
+2025-07-02 03:59:00,116 - INFO - Preparing contract data for Prathmesh  Test-2
+2025-07-02 03:59:00,116 - INFO - Contract data prepared: {'contractorName': 'Prathmesh  Test-2', 'employeeName': 'Prathmesh  Test-2', 'signatureDate': 'July 02, 2025', 'position': '', 'startDate': '2025-07-01', 'salary': '', 'email': 'raghavdeshwalyoyo@gmail.com'}
+2025-07-02 03:59:00,117 - INFO - Using contract data: {'contractorName': 'Prathmesh  Test-2', 'employeeName': 'Prathmesh  Test-2', 'signatureDate': 'July 02, 2025', 'position': '', 'startDate': '2025-07-01', 'salary': '', 'email': 'raghavdeshwalyoyo@gmail.com'}
+2025-07-02 03:59:00,117 - INFO - Sending signature request with mapped fields to employee ID 2438...
+2025-07-02 03:59:01,641 - INFO - Successfully sent signature request for employee ID 2438
+2025-07-02 03:59:02,642 - INFO - === STEP 8: SENDING NEW HIRE PACKET ===
+2025-07-02 03:59:02,642 - INFO - Sending new hire packet for Prathmesh  Test-2
+2025-07-02 03:59:02,642 - INFO - === STARTING NEW HIRE PACKET SEND FOR EMPLOYEE 2438 ===
+2025-07-02 03:59:02,643 - INFO - METHOD 1: Trying AJAX onboarding endpoint
+2025-07-02 03:59:02,643 - INFO - AJAX URL: https://ccdocs.bamboohr.com/ajax/onboarding/sendPacket
+2025-07-02 03:59:02,643 - INFO - AJAX payload: {
+  "employeeId": "2438",
+  "sendWelcomeEmail": true
+}
+2025-07-02 03:59:02,644 - INFO - Using headers: {
+  "X-Requested-With": "XMLHttpRequest",
+  "Referer": "https://ccdocs.bamboohr.com/files/",
+  "Accept": "application/json, text/plain, */*",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+}
+2025-07-02 03:59:04,061 - INFO - AJAX response status: 404
+2025-07-02 03:59:04,062 - INFO - AJAX response headers: {'Date': 'Tue, 01 Jul 2025 22:29:04 GMT', 'Content-Type': 'text/html; charset=UTF-8', 'Transfer-Encoding': 'chunked', 'Connection': 'keep-alive', 'vary': 'Accept-Encoding', 'Content-Encoding': 'gzip', 'cf-cache-status': 'DYNAMIC', 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload', 'Set-Cookie': '_cfuvid=lrWa4VP8nLJt5PJupUECDA9jfHCl7KrdHTfORwpBRS0-1751408944122-0.0.1.1-604800000; path=/; domain=.bamboohr.com; HttpOnly; Secure; SameSite=None', 'Server': 'cloudflare', 'CF-RAY': '958957041d5f45ec-DEL'}
+2025-07-02 03:59:04,062 - INFO - AJAX response body: 
+    <!DOCTYPE html>
+<html lang="" data-locale="" prefix="og: http://ogp.me/ns#">
+
+<head>
+	
+	<script type="text/javascript">
+(function(ENV, TOKEN) {
+	var isSupportedBrowser = true;
+	var enabledEnvironments = ['prod', 'stage'];
+	var isEnabled = isSupportedBrowser && enabledEnvironments.indexOf(ENV) > -1;
+	var isMobile = false;
+
+	function checkIgnoreCases(isUncaught, args, payload) {
+		var isRemoteUncaught = isIgnoringRemoteUncaught(isUncaught, payload);
+		var isIgnoringUrl = isIgnoringUrlSegment(...
+2025-07-02 03:59:04,064 - INFO - METHOD 2: Trying REST API onboarding endpoint
+2025-07-02 03:59:04,064 - INFO - REST URL: https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2438/onboarding
+2025-07-02 03:59:04,064 - INFO - REST payload: {
+  "sendWelcomeEmail": true,
+  "sendOnboardingPacket": true
+}
+2025-07-02 03:59:05,093 - INFO - REST response status: 404
+2025-07-02 03:59:05,093 - INFO - REST response body: Oops! That page does not exist.
+2025-07-02 03:59:05,093 - INFO - METHOD 3: Trying employee notification endpoint
+2025-07-02 03:59:05,095 - INFO - Notify URL: https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2438/notify
+2025-07-02 03:59:05,095 - INFO - Notify payload: {
+  "type": "welcome",
+  "sendEmail": true
+}
+2025-07-02 03:59:06,126 - INFO - Notify response status: 404
+2025-07-02 03:59:06,127 - INFO - Notify response body: Oops! That page does not exist.
+2025-07-02 03:59:06,127 - INFO - METHOD 4: Trying employee status update to trigger welcome
+2025-07-02 03:59:06,127 - INFO - Update URL: https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/2438
+2025-07-02 03:59:06,128 - INFO - Update XML: <?xml version="1.0" encoding="UTF-8"?>
+<employee>
+    <field id="status">Active</field>
+    <field id="sendWelcomeEmail">true</field>
+</employee>
+2025-07-02 03:59:07,279 - INFO - Update response status: 200
+2025-07-02 03:59:07,280 - INFO - Update response body: 
+2025-07-02 03:59:07,280 - INFO - ✅ Successfully updated employee status
+2025-07-02 03:59:07,280 - INFO - === STEP 9: CREATING WEBWORK ACCOUNT ===
+2025-07-02 03:59:07,280 - INFO - Creating WebWork account for raghavdeshwalyoyo@gmail.com
+2025-07-02 03:59:08,205 - INFO - WebWork account created successfully for raghavdeshwalyoyo@gmail.com with multiple teams
+2025-07-02 03:59:08,205 - INFO - Updating row 3 with status: SUCCESS, notes: OK
+2025-07-02 03:59:09,386 - INFO - Row 3 updated successfully
+2025-07-02 03:59:09,387 - INFO - Successfully processed Prathmesh  Test-2
+2025-07-02 03:59:10,388 - INFO - Onboarding run complete: 2 succeeded, 0 failed.
+2025-07-02 03:59:10,388 - INFO - See detailed log file for complete information
+2025-07-02 03:59:10,388 - INFO - Sending Slack notification to C08HXUZHPL1
+2025-07-02 03:59:10,996 - INFO - Slack notification sent successfully
