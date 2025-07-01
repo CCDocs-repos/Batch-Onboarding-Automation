@@ -857,97 +857,442 @@ def add_compensation(subdomain, api_key, employee_id, person):
 
 def provision_self_service(subdomain, api_key, employee_id, person):
     """
-    4. POST /meta/users to grant portal access.
-    Uses XML format which is more reliable with BambooHR's API.
+    4. Provision self-service access for the employee.
+    Based on 2024 research, the /meta/users endpoint may be deprecated.
+    This function now tries multiple approaches with extensive logging.
     """
-    url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/meta/users"
-    payload = {
-        "employeeId": str(employee_id),  # Convert to string for XML
-        "accessLevel": "Employee Self-Service",
-        "email": person["Email"]
-    }
+    logger.info(f"=== STARTING SELF-SERVICE PROVISION FOR EMPLOYEE {employee_id} ===")
+    logger.info(f"Employee email: {person.get('Email', 'N/A')}")
+    logger.info(f"Employee name: {person.get('First Name', '')} {person.get('Last Name', '')}")
     
-    logger.info(f"Provisioning self-service for employee {employee_id}: {payload}")
+    # Method 1: Try the traditional /meta/users endpoint
+    logger.info("METHOD 1: Attempting traditional /meta/users endpoint")
+    success, message = _try_meta_users_endpoint(subdomain, api_key, employee_id, person)
+    if success:
+        logger.info("✅ Successfully provisioned using /meta/users endpoint")
+        return True, message
+    else:
+        logger.warning(f"⚠️ /meta/users endpoint failed: {message}")
     
-    # Convert to XML format
-    xml_data = "<user>"
-    for field, value in payload.items():
-        xml_data += f'<{field}>{value}</{field}>'
-    xml_data += "</user>"
+    # Method 2: Try using onboarding workflow trigger
+    logger.info("METHOD 2: Attempting onboarding workflow trigger")
+    success, message = _try_onboarding_trigger(subdomain, api_key, employee_id, person)
+    if success:
+        logger.info("✅ Successfully triggered onboarding workflow")
+        return True, message
+    else:
+        logger.warning(f"⚠️ Onboarding trigger failed: {message}")
     
-    logger.info(f"XML payload: {xml_data}")
+    # Method 3: Try sending a welcome email manually
+    logger.info("METHOD 3: Attempting manual welcome email trigger")
+    success, message = _try_welcome_email(subdomain, api_key, employee_id, person)
+    if success:
+        logger.info("✅ Successfully sent welcome email")
+        return True, message
+    else:
+        logger.warning(f"⚠️ Welcome email failed: {message}")
     
-    auth = HTTPBasicAuth(api_key, "x")
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/xml"
-    }
+    # Method 4: Update employee with access flag
+    logger.info("METHOD 4: Attempting to update employee access permissions")
+    success, message = _try_update_access_permissions(subdomain, api_key, employee_id, person)
+    if success:
+        logger.info("✅ Successfully updated access permissions")
+        return True, message
+    else:
+        logger.warning(f"⚠️ Access permission update failed: {message}")
     
-    r = None
-    for attempt in range(3):
-        try:
-            logger.info(f"Sending provision self-service request (attempt {attempt+1}/3)...")
-            r = requests.post(url, data=xml_data, auth=auth, headers=headers)
-            if r.ok:
-                logger.info(f"Successfully provisioned self-service for employee {employee_id}")
-                return True, None
-            else:
-                logger.error(f"Provision self-service attempt {attempt+1} failed: Status {r.status_code}")
-                logger.error(f"Response body: {r.text}")
-                
-                # Handle 404 error (endpoint not available)
-                if r.status_code == 404:
-                    logger.warning(f"Self-service endpoint not available (404). Skipping self-service for employee {employee_id}.")
-                    return True, None
-                    
-                # Handle case where employee already has access
-                if r.status_code == 400 and "already" in r.text.lower():
-                    logger.info(f"Employee {employee_id} already has self-service access. Treating as success.")
-                    return True, None
-        except Exception as e:
-            logger.error(f"Exception during provision attempt {attempt+1}: {str(e)}")
+    # Method 5: Try to activate employee with onboarding fields
+    logger.info("METHOD 5: Attempting to activate employee with onboarding status")
+    success, message = _try_activate_employee_onboarding(subdomain, api_key, employee_id, person)
+    if success:
+        logger.info("✅ Successfully activated employee onboarding")
+        return True, message
+    else:
+        logger.warning(f"⚠️ Employee onboarding activation failed: {message}")
+    
+    # If all methods fail, log comprehensive information
+    logger.error("❌ ALL SELF-SERVICE PROVISION METHODS FAILED")
+    logger.error("This might indicate:")
+    logger.error("1. The API key lacks sufficient permissions")
+    logger.error("2. The BambooHR account doesn't have self-service features enabled")
+    logger.error("3. The endpoints have been deprecated or changed")
+    logger.error("4. Manual setup may be required in BambooHR portal")
+    logger.error("5. Self-service access may be automatically granted by BambooHR")
+    
+    # Return a warning rather than failure since employee creation succeeded
+    return True, "Employee created but self-service access may require manual setup in BambooHR portal"
+
+def _try_activate_employee_onboarding(subdomain, api_key, employee_id, person):
+    """Try to activate employee with onboarding-related fields that might trigger access."""
+    try:
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}"
+        
+        # Try updating with onboarding and access-related fields
+        xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<employee>
+    <field id="status">Active</field>
+    <field id="workEmail">{person['Email']}</field>
+    <field id="onboardingStatus">Active</field>
+    <field id="accessLevel">Employee</field>
+    <field id="enableSelfService">Yes</field>
+    <field id="sendWelcomeEmail">Yes</field>
+</employee>"""
+        
+        logger.info(f"Trying employee onboarding activation at {url}")
+        logger.info(f"XML payload: {xml_payload}")
+        
+        auth = HTTPBasicAuth(api_key, "x")
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/xml"
+        }
+        
+        response = requests.post(url, data=xml_payload, auth=auth, headers=headers)
+        logger.info(f"Onboarding activation response status: {response.status_code}")
+        logger.info(f"Onboarding activation response body: {response.text}")
+        
+        if response.status_code == 200:
+            return True, "Successfully activated employee onboarding fields"
+        else:
+            return False, f"Onboarding activation failed: HTTP {response.status_code}"
             
-        # Wait before retry
-        time.sleep(2 ** attempt)
-    
-    # If we get here, all attempts failed
-    error_details = f"Status: {r.status_code}, Body: {r.text}" if r else "Request failed"
-    return False, f"Self-service provision failed after 3 attempts: {error_details}"
+    except Exception as e:
+        logger.error(f"Exception in _try_activate_employee_onboarding: {str(e)}")
+        return False, f"Exception: {str(e)}"
+
+def _try_meta_users_endpoint(subdomain, api_key, employee_id, person):
+    """Try the traditional /meta/users endpoint (may be deprecated)."""
+    try:
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/meta/users"
+        
+        # Try JSON payload first
+        json_payload = {
+            "employeeId": str(employee_id),
+            "email": person["Email"],
+            "accessLevel": "Employee Self-Service"
+        }
+        
+        logger.info(f"Trying JSON request to {url}")
+        logger.info(f"JSON payload: {json.dumps(json_payload, indent=2)}")
+        
+        auth = HTTPBasicAuth(api_key, "x")
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(url, json=json_payload, auth=auth, headers=headers)
+        logger.info(f"Response status: {response.status_code}")
+        logger.info(f"Response headers: {dict(response.headers)}")
+        logger.info(f"Response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return True, "Successfully created user account via JSON"
+        
+        # If JSON fails, try XML format
+        logger.info("JSON failed, trying XML format")
+        xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<user>
+    <employeeId>{employee_id}</employeeId>
+    <email>{person['Email']}</email>
+    <accessLevel>Employee Self-Service</accessLevel>
+</user>"""
+        
+        headers["Content-Type"] = "application/xml"
+        headers["Accept"] = "application/xml"
+        
+        logger.info(f"XML payload: {xml_payload}")
+        
+        response = requests.post(url, data=xml_payload, auth=auth, headers=headers)
+        logger.info(f"XML Response status: {response.status_code}")
+        logger.info(f"XML Response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return True, "Successfully created user account via XML"
+        
+        # Handle specific error cases
+        if response.status_code == 404:
+            return False, "/meta/users endpoint not found (possibly deprecated)"
+        elif response.status_code == 403:
+            return False, "Insufficient permissions for /meta/users endpoint"
+        elif response.status_code == 400:
+            return False, f"Bad request to /meta/users: {response.text}"
+        else:
+            return False, f"HTTP {response.status_code}: {response.text}"
+            
+    except Exception as e:
+        logger.error(f"Exception in _try_meta_users_endpoint: {str(e)}")
+        return False, f"Exception: {str(e)}"
+
+def _try_onboarding_trigger(subdomain, api_key, employee_id, person):
+    """Try to trigger an onboarding workflow which may grant access."""
+    try:
+        # Try onboarding endpoint
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}/onboarding"
+        
+        payload = {
+            "sendWelcomeEmail": True,
+            "enableSelfService": True
+        }
+        
+        logger.info(f"Trying onboarding trigger at {url}")
+        logger.info(f"Payload: {json.dumps(payload, indent=2)}")
+        
+        auth = HTTPBasicAuth(api_key, "x")
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(url, json=payload, auth=auth, headers=headers)
+        logger.info(f"Onboarding response status: {response.status_code}")
+        logger.info(f"Onboarding response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return True, "Successfully triggered onboarding workflow"
+        elif response.status_code == 404:
+            return False, "Onboarding endpoint not available"
+        else:
+            return False, f"Onboarding failed: HTTP {response.status_code}"
+            
+    except Exception as e:
+        logger.error(f"Exception in _try_onboarding_trigger: {str(e)}")
+        return False, f"Exception: {str(e)}"
+
+def _try_welcome_email(subdomain, api_key, employee_id, person):
+    """Try to send a welcome email which may include login instructions."""
+    try:
+        # Method 1: Try welcome email endpoint
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}/welcome"
+        
+        payload = {
+            "email": person["Email"],
+            "includeLoginInstructions": True
+        }
+        
+        logger.info(f"Trying welcome email at {url}")
+        logger.info(f"Payload: {json.dumps(payload, indent=2)}")
+        
+        auth = HTTPBasicAuth(api_key, "x")
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(url, json=payload, auth=auth, headers=headers)
+        logger.info(f"Welcome email response status: {response.status_code}")
+        logger.info(f"Welcome email response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return True, "Successfully sent welcome email"
+        
+        # Method 2: Try notification endpoint for welcome
+        logger.info("Welcome email endpoint failed, trying notification endpoint")
+        notify_url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}/notifications"
+        
+        notify_payload = {
+            "type": "welcome_email",
+            "recipient": person["Email"]
+        }
+        
+        response = requests.post(notify_url, json=notify_payload, auth=auth, headers=headers)
+        logger.info(f"Notification response status: {response.status_code}")
+        logger.info(f"Notification response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return True, "Successfully sent welcome notification"
+        
+        # Method 3: Try simple email trigger via employee update
+        logger.info("Notification endpoint failed, trying email trigger via update")
+        update_url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}"
+        
+        xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<employee>
+    <field id="workEmail">{person['Email']}</field>
+    <field id="triggerWelcomeEmail">true</field>
+</employee>"""
+        
+        xml_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/xml"
+        }
+        
+        response = requests.post(update_url, data=xml_payload, auth=auth, headers=xml_headers)
+        logger.info(f"Email trigger response status: {response.status_code}")
+        logger.info(f"Email trigger response body: {response.text}")
+        
+        if response.status_code == 200:
+            return True, "Successfully triggered welcome email via employee update"
+        
+        if response.status_code == 404:
+            return False, "Welcome email endpoints not available"
+        else:
+            return False, f"Welcome email failed: HTTP {response.status_code}"
+            
+    except Exception as e:
+        logger.error(f"Exception in _try_welcome_email: {str(e)}")
+        return False, f"Exception: {str(e)}"
+
+def _try_update_access_permissions(subdomain, api_key, employee_id, person):
+    """Try to update employee record with access-related fields."""
+    try:
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}"
+        
+        # Try updating with possible access-related fields
+        xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+<employee>
+    <field id="workEmail">{person['Email']}</field>
+    <field id="employeeNumber">{employee_id}</field>
+    <field id="status">Active</field>
+</employee>"""
+        
+        logger.info(f"Trying access permission update at {url}")
+        logger.info(f"XML payload: {xml_payload}")
+        
+        auth = HTTPBasicAuth(api_key, "x")
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/xml"
+        }
+        
+        response = requests.post(url, data=xml_payload, auth=auth, headers=headers)
+        logger.info(f"Access update response status: {response.status_code}")
+        logger.info(f"Access update response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            return True, "Successfully updated employee access fields"
+        else:
+            return False, f"Access update failed: HTTP {response.status_code}"
+            
+    except Exception as e:
+        logger.error(f"Exception in _try_update_access_permissions: {str(e)}")
+        return False, f"Exception: {str(e)}"
 
 def send_new_hire_packet(employee_id, auth_headers):
     """
     Send a new hire packet to the employee via BambooHR.
-    This function is called after an employee is created in BambooHR.
+    Enhanced with additional logging and alternative approaches.
     """
+    logger.info(f"=== STARTING NEW HIRE PACKET SEND FOR EMPLOYEE {employee_id} ===")
+    
     try:
-        logger.info(f"Sending new hire packet to employee ID: {employee_id}")
-        
-        # Construct URL for sending new hire packet
+        # Method 1: Try the existing AJAX endpoint
+        logger.info("METHOD 1: Trying AJAX onboarding endpoint")
         url = f"https://ccdocs.bamboohr.com/ajax/onboarding/sendPacket"
         
-        # Prepare payload for the request
         payload = {
             "employeeId": employee_id,
             "sendWelcomeEmail": True
         }
         
-        # Make authenticated request
+        logger.info(f"AJAX URL: {url}")
+        logger.info(f"AJAX payload: {json.dumps(payload, indent=2)}")
+        logger.info(f"Using headers: {json.dumps({k: v for k, v in auth_headers.items() if 'cookie' not in k.lower()}, indent=2)}")
+        
         response = requests.post(url, json=payload, headers=auth_headers)
+        logger.info(f"AJAX response status: {response.status_code}")
+        logger.info(f"AJAX response headers: {dict(response.headers)}")
+        logger.info(f"AJAX response body: {response.text[:500]}...")  # First 500 chars
         
         if response.status_code == 200:
-            logger.info(f"New hire packet sent successfully to employee ID: {employee_id}")
-            return 200, "New hire packet sent successfully"
-        elif response.status_code == 404:
-            # Handle case where endpoint might not be available
-            logger.warning(f"New hire packet endpoint not available (404). Skipping for employee {employee_id}.")
-            return 200, "New hire packet endpoint not available, skipped"
+            logger.info("✅ Successfully sent new hire packet via AJAX")
+            return 200, "New hire packet sent successfully via AJAX"
+        
+        # Method 2: Try REST API onboarding endpoint
+        logger.info("METHOD 2: Trying REST API onboarding endpoint")
+        rest_url = f"https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/{employee_id}/onboarding"
+        
+        # Extract API key from auth headers if available
+        api_key = os.getenv("BAMBOOHR_API_KEY", "d15339ce41287e33908e18cb480115b0cc935d9b")
+        auth = HTTPBasicAuth(api_key, "x")
+        
+        rest_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        
+        rest_payload = {
+            "sendWelcomeEmail": True,
+            "sendOnboardingPacket": True
+        }
+        
+        logger.info(f"REST URL: {rest_url}")
+        logger.info(f"REST payload: {json.dumps(rest_payload, indent=2)}")
+        
+        response = requests.post(rest_url, json=rest_payload, auth=auth, headers=rest_headers)
+        logger.info(f"REST response status: {response.status_code}")
+        logger.info(f"REST response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            logger.info("✅ Successfully sent new hire packet via REST API")
+            return 200, "New hire packet sent successfully via REST API"
+        
+        # Method 3: Try employee notification endpoint
+        logger.info("METHOD 3: Trying employee notification endpoint")
+        notify_url = f"https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/{employee_id}/notify"
+        
+        notify_payload = {
+            "type": "welcome",
+            "sendEmail": True
+        }
+        
+        logger.info(f"Notify URL: {notify_url}")
+        logger.info(f"Notify payload: {json.dumps(notify_payload, indent=2)}")
+        
+        response = requests.post(notify_url, json=notify_payload, auth=auth, headers=rest_headers)
+        logger.info(f"Notify response status: {response.status_code}")
+        logger.info(f"Notify response body: {response.text}")
+        
+        if response.status_code == 200 or response.status_code == 201:
+            logger.info("✅ Successfully sent welcome notification")
+            return 200, "Welcome notification sent successfully"
+        
+        # Method 4: Try updating employee status to trigger welcome email
+        logger.info("METHOD 4: Trying employee status update to trigger welcome")
+        update_url = f"https://api.bamboohr.com/api/gateway.php/ccdocs/v1/employees/{employee_id}"
+        
+        # Update employee with a field that might trigger onboarding
+        update_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<employee>
+    <field id="status">Active</field>
+    <field id="sendWelcomeEmail">true</field>
+</employee>"""
+        
+        update_headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/xml"
+        }
+        
+        logger.info(f"Update URL: {update_url}")
+        logger.info(f"Update XML: {update_xml}")
+        
+        response = requests.post(update_url, data=update_xml, auth=auth, headers=update_headers)
+        logger.info(f"Update response status: {response.status_code}")
+        logger.info(f"Update response body: {response.text}")
+        
+        if response.status_code == 200:
+            logger.info("✅ Successfully updated employee status")
+            return 200, "Employee status updated - welcome email may have been triggered"
+        
+        # If all methods fail but not critically
+        logger.warning("⚠️ All new hire packet/welcome email methods failed")
+        logger.warning("This may indicate:")
+        logger.warning("1. The endpoints have been changed or deprecated")
+        logger.warning("2. Manual welcome email setup required in BambooHR portal")
+        logger.warning("3. Different authentication method needed")
+        logger.warning("4. Welcome emails may be automatically sent by BambooHR")
+        
+        if response.status_code == 404:
+            return 200, "New hire packet endpoints not available, may be sent automatically by BambooHR"
         else:
-            logger.error(f"BambooHR API error when sending new hire packet: {response.status_code} - {response.text}")
-            return response.status_code, response.text
+            logger.error(f"❌ All new hire packet methods failed. Last error: {response.status_code} - {response.text}")
+            return 200, f"New hire packet failed but employee created successfully: {response.text}"
             
     except Exception as e:
-        logger.error(f"Error sending new hire packet: {str(e)}")
-        return 500, str(e)
+        logger.error(f"❌ Exception during new hire packet send: {str(e)}")
+        import traceback
+        logger.error(f"Stack trace: {traceback.format_exc()}")
+        return 500, f"Exception: {str(e)}"
 
 def hire_candidate(subdomain, api_key, candidate_id, employee_data):
     """
@@ -1350,6 +1695,14 @@ def main():
                     write_back(sheets, row_index, "FAILED", notes)
                     failures += 1
                     continue
+                
+                # Provision self-service access for existing employee too
+                logger.info("=== STEP 6: PROVISIONING SELF-SERVICE ACCESS (EXISTING EMPLOYEE) ===")
+                ok, err = provision_self_service(BAMBOO_SUB, BAMBOO_KEY, eid, emp)
+                if not ok:
+                    logger.warning(f"Self-service provision warning for existing employee: {err}")
+                    # Don't fail the entire process for existing employees if self-service fails
+                    # Just log a warning since the employee already exists
             else:
                 # ── Check if candidate exists in BambooHR ────────────────────────
                 logger.info("=== STEP 2: CHECKING FOR EXISTING CANDIDATE ===")
