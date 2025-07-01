@@ -772,99 +772,106 @@ def update_employee(subdomain, api_key, employee_id, person):
 
 def add_compensation(subdomain, api_key, employee_id, person):
     """
-    3. POST /employees/{id}/tables/compensation to set up pay.
-    Uses XML format which is more reliable with BambooHR's API.
+    Add or update compensation for an employee using XML (BambooHR preferred).
+    - Cleans pay rate
+    - Checks for existing compensation for effectiveDate and updates if found
+    - Logs full error details
     """
-    # First check if compensation already exists
-    if check_compensation_exists(subdomain, api_key, employee_id):
-        logger.info(f"Employee {employee_id} already has compensation records, skipping")
-        return True, None
-        
-    url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}/tables/compensation/"
-    
-    # Get values from sheet with fallbacks to default values
-    pay_rate = person.get("Pay Rate", person.get("Salary", ""))
-    if pay_rate and isinstance(pay_rate, str):
-        # Clean up the pay rate - remove $ and commas
-        pay_rate = pay_rate.replace("$", "").replace(",", "").strip()
-        try:
-            pay_rate = float(pay_rate)
-        except ValueError:
-            logger.error(f"Invalid pay rate format: {pay_rate}")
-            return False, f"Invalid pay rate format: {pay_rate}"
-    
-    pay_type = person.get("Pay Type", "Hourly")  # Default to Hourly if not specified
-    pay_schedule = person.get("Pay Schedule", "Biweekly")  # Default to Biweekly if not specified
-    
-    # Determine payPer based on pay type
-    pay_per = "Hourly"
-    if pay_type and pay_type.lower() in ["salary", "salaried"]:
-        pay_per = "Year"
-    
-    payload = {
-        "payRate": str(pay_rate),  # Convert to string for XML
-        "payPer": pay_per,
-        "currency": "USD",
-        "payType": pay_type,
-        "paySchedule": pay_schedule,
-        "effectiveDate": person.get("Start Date", "")  # Use start date as effective date
-    }
-    
-    # Remove any empty fields
-    payload = {k: v for k, v in payload.items() if v}
-    
-    logger.info(f"Adding compensation for employee {employee_id}: {payload}")
-    
-    # Convert to XML format
-    xml_data = "<row>"
-    for field, value in payload.items():
-        xml_data += f'<field id="{field}">{value}</field>'
-    xml_data += "</row>"
-    
-    logger.info(f"XML payload: {xml_data}")
-    
-    auth = HTTPBasicAuth(api_key, "x")
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/xml"
-    }
-    
-    r = None
-    for attempt in range(3):
-        try:
-            logger.info(f"Sending add compensation request (attempt {attempt+1}/3)...")
-            r = requests.post(url, data=xml_data, auth=auth, headers=headers)
-            if r.ok:
-                logger.info(f"Successfully added compensation for employee {employee_id}")
-                return True, None
-            else:
-                logger.error(f"Add compensation attempt {attempt+1} failed: Status {r.status_code}")
-                logger.error(f"Response body: {r.text}")
-                
-                # If it's a 400 error and the employee already has compensation
-                if r.status_code == 400 and ("already has" in r.text.lower() or "duplicate" in r.text.lower()):
-                    logger.info("Employee already has compensation records, treating as success")
-                    return True, None
-        except Exception as e:
-            logger.error(f"Exception during add compensation attempt {attempt+1}: {str(e)}")
-            
-        # Wait before retry
-        time.sleep(2 ** attempt)
-    
-    # If we get here, all attempts failed
-    error_details = f"Status: {r.status_code}, Body: {r.text}" if r else "Request failed"
-    return False, f"Compensation setup failed after 3 attempts: {error_details}"
+    try:
+        logger.info(f"Adding compensation for employee {employee_id}")
+        url = f"https://api.bamboohr.com/api/gateway.php/{subdomain}/v1/employees/{employee_id}/tables/compensation/"
+        auth = HTTPBasicAuth(api_key, "x")
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/xml"
+        }
+
+        # Clean pay rate
+        pay_rate = person.get("Pay Rate", person.get("Salary", ""))
+        if pay_rate and isinstance(pay_rate, str):
+            pay_rate = pay_rate.replace("$", "").replace(",", "").strip()
+            try:
+                pay_rate = float(pay_rate)
+            except ValueError:
+                logger.error(f"Invalid pay rate format: {pay_rate}")
+                return False, f"Invalid pay rate format: {pay_rate}"
+
+        pay_type = person.get("Pay Type", "Hourly")
+        pay_schedule = person.get("Pay Schedule", "Biweekly")
+        pay_per = "Hourly"
+        if pay_type and pay_type.lower() in ["salary", "salaried"]:
+            pay_per = "Year"
+
+        payload = {
+            "payRate": str(pay_rate),
+            "payPer": pay_per,
+            "currency": "USD",
+            "payType": pay_type,
+            "paySchedule": pay_schedule,
+            "effectiveDate": person.get("Start Date", "")
+        }
+        payload = {k: v for k, v in payload.items() if v}
+        logger.info(f"Compensation payload: {payload}")
+
+        # Convert to XML
+        xml_data = "<row>"
+        for field, value in payload.items():
+            xml_data += f'<field id="{field}">{value}</field>'
+        xml_data += "</row>"
+        logger.info(f"XML payload: {xml_data}")
+
+        # Check for existing compensation for this effectiveDate
+        check_url = url
+        check_headers = {'Accept': 'application/json'}
+        check_resp = requests.get(check_url, auth=auth, headers=check_headers)
+        if check_resp.status_code == 200:
+            try:
+                records = check_resp.json()
+                for row in records:
+                    if row.get("effectiveDate") == payload["effectiveDate"]:
+                        row_id = row.get("id")
+                        if row_id:
+                            update_url = f"{url}{row_id}"
+                            logger.info(f"Existing compensation found for date. Updating row {row_id}")
+                            put_resp = requests.put(update_url, data=xml_data, auth=auth, headers=headers)
+                            if put_resp.ok:
+                                logger.info(f"✅ Updated compensation row {row_id} for employee {employee_id}")
+                                return True, None
+                            else:
+                                logger.error(f"❌ Update failed: {put_resp.status_code} - {put_resp.text}")
+                                logger.error(f"Headers: {put_resp.headers}")
+                                return False, f"Update failed: {put_resp.status_code} - {put_resp.text}"
+            except Exception as e:
+                logger.warning(f"Could not parse GET response as JSON: {e}")
+        else:
+            logger.warning(f"Could not GET compensation table: {check_resp.status_code} - {check_resp.text}")
+
+        # POST new compensation row
+        logger.info(f"No existing row found. Creating new compensation entry...")
+        post_resp = requests.post(url, data=xml_data, auth=auth, headers=headers)
+        if post_resp.ok:
+            logger.info(f"✅ Created compensation for employee {employee_id}")
+            return True, None
+        else:
+            logger.error(f"❌ POST failed: {post_resp.status_code} - {post_resp.text}")
+            logger.error(f"Headers: {post_resp.headers}")
+            return False, f"POST failed: {post_resp.status_code} - {post_resp.text}"
+    except Exception as e:
+        logger.error(f"Exception in add_compensation: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return False, f"Exception: {str(e)}"
 
 def provision_self_service(subdomain, api_key, employee_id, person):
     """
-    4. Provision self-service access for the employee.
-    Based on 2024 research, the /meta/users endpoint may be deprecated.
-    This function now tries multiple approaches with extensive logging.
+    Provision self-service access for the employee using multiple fallback methods.
+    Tries /meta/users, onboarding trigger, welcome email, and access update.
+    Logs all attempts and errors.
     """
     logger.info(f"=== STARTING SELF-SERVICE PROVISION FOR EMPLOYEE {employee_id} ===")
     logger.info(f"Employee email: {person.get('Email', 'N/A')}")
     logger.info(f"Employee name: {person.get('First Name', '')} {person.get('Last Name', '')}")
-    
+
     # Method 1: Try the traditional /meta/users endpoint
     logger.info("METHOD 1: Attempting traditional /meta/users endpoint")
     success, message = _try_meta_users_endpoint(subdomain, api_key, employee_id, person)
@@ -873,7 +880,7 @@ def provision_self_service(subdomain, api_key, employee_id, person):
         return True, message
     else:
         logger.warning(f"⚠️ /meta/users endpoint failed: {message}")
-    
+
     # Method 2: Try using onboarding workflow trigger
     logger.info("METHOD 2: Attempting onboarding workflow trigger")
     success, message = _try_onboarding_trigger(subdomain, api_key, employee_id, person)
@@ -882,17 +889,17 @@ def provision_self_service(subdomain, api_key, employee_id, person):
         return True, message
     else:
         logger.warning(f"⚠️ Onboarding trigger failed: {message}")
-    
-    # Method 3: Try sending a welcome email manually
-    logger.info("METHOD 3: Attempting manual welcome email trigger")
+
+    # Method 3: Try using welcome email endpoint
+    logger.info("METHOD 3: Attempting welcome email endpoint")
     success, message = _try_welcome_email(subdomain, api_key, employee_id, person)
     if success:
         logger.info("✅ Successfully sent welcome email")
         return True, message
     else:
         logger.warning(f"⚠️ Welcome email failed: {message}")
-    
-    # Method 4: Update employee with access flag
+
+    # Method 4: Try updating employee with access fields
     logger.info("METHOD 4: Attempting to update employee access permissions")
     success, message = _try_update_access_permissions(subdomain, api_key, employee_id, person)
     if success:
@@ -900,7 +907,7 @@ def provision_self_service(subdomain, api_key, employee_id, person):
         return True, message
     else:
         logger.warning(f"⚠️ Access permission update failed: {message}")
-    
+
     # Method 5: Try to activate employee with onboarding fields
     logger.info("METHOD 5: Attempting to activate employee with onboarding status")
     success, message = _try_activate_employee_onboarding(subdomain, api_key, employee_id, person)
@@ -909,18 +916,9 @@ def provision_self_service(subdomain, api_key, employee_id, person):
         return True, message
     else:
         logger.warning(f"⚠️ Employee onboarding activation failed: {message}")
-    
-    # If all methods fail, log comprehensive information
+
     logger.error("❌ ALL SELF-SERVICE PROVISION METHODS FAILED")
-    logger.error("This might indicate:")
-    logger.error("1. The API key lacks sufficient permissions")
-    logger.error("2. The BambooHR account doesn't have self-service features enabled")
-    logger.error("3. The endpoints have been deprecated or changed")
-    logger.error("4. Manual setup may be required in BambooHR portal")
-    logger.error("5. Self-service access may be automatically granted by BambooHR")
-    
-    # Return a warning rather than failure since employee creation succeeded
-    return True, "Employee created but self-service access may require manual setup in BambooHR portal"
+    return False, "All self-service provision methods failed"
 
 def _try_activate_employee_onboarding(subdomain, api_key, employee_id, person):
     """Try to activate employee with onboarding-related fields that might trigger access."""

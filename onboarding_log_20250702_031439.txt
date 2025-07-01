@@ -1,0 +1,18 @@
+2025-07-02 03:14:39,934 - INFO - Detailed logging enabled - check log file for complete information
+2025-07-02 03:14:39,935 - INFO - BambooHR Subdomain: ccdocs
+2025-07-02 03:14:39,936 - INFO - BambooHR API Key: ********bf81
+2025-07-02 03:14:39,939 - INFO - WebWork URL: https://www.webwork-tracker.com/rest-api/users
+2025-07-02 03:14:39,940 - INFO - WebWork Username: Set
+2025-07-02 03:14:39,940 - INFO - Google Sheet ID: 1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA
+2025-07-02 03:14:39,941 - INFO - Google Sheet Name: Sheet1
+2025-07-02 03:14:39,942 - INFO - Initializing Google Sheets...
+2025-07-02 03:14:40,433 - INFO - Initializing Slack client...
+2025-07-02 03:14:40,435 - INFO - All non-bamboo clients initialized.
+2025-07-02 03:14:40,436 - INFO - --- RUNNING IN PRODUCTION MODE ---
+2025-07-02 03:14:40,437 - INFO - Reading pending rows from Google Sheet...
+2025-07-02 03:14:40,438 - INFO - Reading data from sheet: 1SU_GoWTxY0eBiWA-FGRjC0yEeMHQYLGWpCkHseXCZBA, tab: Sheet1
+2025-07-02 03:14:41,235 - INFO - Found 2 total rows, checking for pending hires...
+2025-07-02 03:14:41,236 - INFO - Found 0 pending hires to process
+2025-07-02 03:14:41,236 - INFO - No new hires to process.
+2025-07-02 03:14:41,237 - INFO - Sending Slack notification to C08HXUZHPL1
+2025-07-02 03:14:41,824 - INFO - Slack notification sent successfully
